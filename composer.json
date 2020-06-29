@@ -1,0 +1,24 @@
+{
+    "name": "petzka/contao-news-search",
+    "description": "",
+    "type": "contao-bundle",
+    "require": {
+        "contao/core-bundle": "^4.9",
+        "heimrichhannot/contao-haste_plus": ">=1.2.0,<2-dev"
+    },
+    "license": "LGPL-3.0-or-later",
+    "authors": [
+        {
+            "name": "Moritz Petzka",
+            "email": "info@petzka.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Petzka\\ContaoNewsSearch\\": "src/"
+        }
+    },
+    "extra": {
+        "contao-manager-plugin": "Petzka\\ContaoNewsSearch\\ContaoManager\\Plugin"
+    }
+}
