@@ -1,93 +1,123 @@
 <div class="mod_search <?php echo $this->class; ?> block"<?php echo $this->cssID; ?><?php if ($this->style): ?> style="<?php echo $this->style; ?>"<?php endif; ?>>
 <?php $this->block('content'); ?>
 <div id="search_<?php echo $this->id; ?>" class="searchbox ce_form">
-<?php if ($this->headline): ?><div class="label"><?php echo $this->headline; ?></div><?php endif; ?>
-  <form<?php if ($this->action): ?> action="<?= $this->action ?>"<?php endif; ?> method="get">
-    <input class="search-extended-input" type="hidden" name="extended" id="ctrl_extended_<?= $this->uniqueId ?>" value="<?= $this->extended ?>">
-    <input type="hidden" name="is_all_topics" id="ctrl_isalltopics_<?= $this->uniqueId ?>" value="<?= $this->allTopicsSelected ?>">
-    <input type="hidden" name="is_all_categories" id="ctrl_isallcategories_<?= $this->uniqueId ?>" value="<?= $this->allCategoriesSelected ?>">
+    <?php if ($this->headline): ?>
+    <div class="label"><?php echo $this->headline; ?></div>
+    <?php endif; ?>
+    <form
+    <?php if ($this->action): ?> action="<?= $this->action ?>"<?php endif; ?> method="get">
+    <input class="search-extended-input" type="hidden" name="extended" id="ctrl_extended_<?= $this->uniqueId ?>"
+           value="<?= $this->extended ?>">
+    <input type="hidden" name="is_all_topics" id="ctrl_isalltopics_<?= $this->uniqueId ?>"
+           value="<?= $this->allTopicsSelected ?>">
+    <input type="hidden" name="is_all_categories" id="ctrl_isallcategories_<?= $this->uniqueId ?>"
+           value="<?= $this->allCategoriesSelected ?>">
     <div class="formbody">
 
-            <label for="ctrl_keywords_<?= $this->uniqueId ?>" class="invisible"><?= $this->keywordLabel ?></label>
-            <div class="input-button-set">
-                <input class="search-input" type="search" name="keywords" id="ctrl_keywords_<?= $this->uniqueId ?>" class="text" value="<?= $this->keyword ?>">
-                <div class="extend-search <?php if ($this->extensionBoxClass === 'open'): ?>active<?php endif; ?>"></div>
-            </div>
-
-
+        <label for="ctrl_keywords_<?= $this->uniqueId ?>" class="invisible"><?= $this->keywordLabel ?></label>
+        <div class="input-button-set">
+            <input class="search-input" type="search" name="keywords" id="ctrl_keywords_<?= $this->uniqueId ?>"
+                   class="text" value="<?= $this->keyword ?>">
+            <div class="extend-search <?php if ($this->extensionBoxClass === 'open'): ?>active<?php endif; ?>"></div>
+        </div>
+        <div class="widget">
+            <div class="extend-search extend-button">Suche erweitern</div>
+        </div>
         <div class="search-extension <?= $this->extensionBoxClass ?>">
 
-        <div class="ce_row row">
-            <div class="widget widget-select select col-md-3">
-                <label class="select col-md-3" for="time_span">Zeitraum</label>
-                <select id="ctrl_timeSpan_<?= $this->uniqueId ?>" class="select col-md-3" name="time_span" onchange='this.form.submit()'>
-                    <option value="all" <?php if ($this->timeSpan === "all"): ?>selected<?php endif; ?>>Gesamt</value>
-                    <option value="week" <?php if ($this->timeSpan === "week"): ?>selected<?php endif; ?>>Letzte Woche</value>
-                    <option value="month" <?php if ($this->timeSpan === "month"): ?>selected<?php endif; ?>>Letzer Monat</value>
-                    <option value="year" <?php if ($this->timeSpan === "year"): ?>selected<?php endif; ?>>Letztes Jahr</value>
-                </select>
+            <div class="ce_row row">
+                <div class="widget widget-select select col-md-3">
+                    <label class="select col-md-3" for="time_span">Zeitraum</label>
+                    <select id="ctrl_timeSpan_<?= $this->uniqueId ?>" class="select col-md-3" name="time_span"
+                            onchange='this.form.submit()'>
+                        <option value="all"
+                        <?php if ($this->timeSpan === "all"): ?>selected<?php endif; ?>>Gesamt</value>
+                        <option value="week"
+                        <?php if ($this->timeSpan === "week"): ?>selected<?php endif; ?>>Letzte Woche</value>
+                        <option value="month"
+                        <?php if ($this->timeSpan === "month"): ?>selected<?php endif; ?>>Letzer Monat</value>
+                        <option value="year"
+                        <?php if ($this->timeSpan === "year"): ?>selected<?php endif; ?>>Letztes Jahr</value>
+                    </select>
+                </div>
             </div>
-        </div>
             <?php if ($this->Template->topicsAvailable): ?>
             <div class="widget widget-checkbox">
                 <fieldset id="ctrl_topics_<?= $this->uniqueId ?>" class="checkbox_container">
                     <legend>Themenbereich</legend>
-                        <span>
-                            <input type="checkbox" name="article_topics[]" id="ctrl_topics_<?= $this->uniqueId ?>_0" class="checkbox article_topic_checkbox" value="all" selected="true" onchange='this.form.submit()'
-                            <?php if ($this->allTopicsSelected): ?>checked="true"<?php endif; ?>
-                            />
+                    <span>
+                            <input type="checkbox" name="article_topics[]" id="ctrl_topics_<?= $this->uniqueId ?>_0"
+                                   class="checkbox article_topic_checkbox" value="all" selected="true"
+                                   onchange='this.form.submit()'
+                        <?php if ($this->allTopicsSelected): ?>checked="true"<?php endif; ?>
+                        />
                             <label id="lbl_topics_<?= $this->uniqueId ?>_0" for="ctrl_topics_<?= $this->uniqueId ?>_0">Alle</label>
                         </span>
-                        <?php foreach ($this->topics as $key => $topic): ?>
-                           <span>
-                                <input type="checkbox" name="article_topics[]" id="ctrl_topics_<?= $this->uniqueId ?>_<?= $topic->id ?>" class="checkbox article_topic_checkbox initial-checkbox" value="<?= $topic->id ?>"
-                                <?php if ($topic->checked): ?>checked="true"<?php endif; ?>
+                    <?php foreach ($this->topics as $key => $topic): ?>
+                    <span>
+                                <input type="checkbox" name="article_topics[]"
+                                       id="ctrl_topics_<?= $this->uniqueId ?>_<?= $topic->id ?>"
+                                       class="checkbox article_topic_checkbox initial-checkbox"
+                                       value="<?= $topic->id ?>"
+                        <?php if ($topic->checked): ?>checked="true"<?php endif; ?>
 
-                                 />
-                                <label id="lbl_topics_<?= $this->uniqueId ?>_<?= $topic->id ?>" for="ctrl_topics_<?= $this->uniqueId ?>_<?= $topic->id ?>"><?= $topic->frontendTitle ?></label>
+                        />
+                                <label id="lbl_topics_<?= $this->uniqueId ?>_<?= $topic->id ?>"
+                                       for="ctrl_topics_<?= $this->uniqueId ?>_<?= $topic->id ?>">
+
+                                    <?php if ($topic->frontendTitle): ?><?= $topic->frontendTitle ?><?php endif; ?>
+                                    <?php if (!$topic->frontendTitle): ?> <?= $topic->title ?><?php endif; ?>
+                                </label>
                            </span>
-                        <?php endforeach; ?>
+                    <?php endforeach; ?>
                 </fieldset>
             </div>
 
             <?php if ($this->categoriesVisible): ?>
             <div class="widget widget-checkbox">
-               <fieldset id="ctrl_categories_<?= $this->uniqueId ?>" class="checkbox_container">
+                <fieldset id="ctrl_categories_<?= $this->uniqueId ?>" class="checkbox_container">
                     <legend>Kategorien</legend>
-                        <span>
-                            <input type="checkbox" name="article_categories[]" id="ctrl_categories_<?= $this->uniqueId ?>_0" class="checkbox article_categories_checkbox initial-checkbox" value="all" onchange='this.form.submit()'
-                            <?php if ($this->allCategoriesSelected): ?>checked="true"<?php endif; ?>
-                            />
-                            <label id="lbl_categories_<?= $this->uniqueId ?>_0" for="ctrl_categories_<?= $this->uniqueId ?>_0">Alle</label>
+                    <span>
+                            <input type="checkbox" name="article_categories[]"
+                                   id="ctrl_categories_<?= $this->uniqueId ?>_0"
+                                   class="checkbox article_categories_checkbox initial-checkbox" value="all"
+                                   onchange='this.form.submit()'
+                        <?php if ($this->allCategoriesSelected): ?>checked="true"<?php endif; ?>
+                        />
+                            <label id="lbl_categories_<?= $this->uniqueId ?>_0"
+                                   for="ctrl_categories_<?= $this->uniqueId ?>_0">Alle</label>
                         </span>
-                        <?php foreach ($this->categories as $key => $category): ?>
-                           <span>
-                                <input type="checkbox" name="article_categories[]" id="ctrl_categories_<?= $this->uniqueId ?>_<?= $category->id ?>" class="checkbox article_category_checkbox" value="<?= $category->id ?>"
-                               <?php if ($category->checked): ?>checked="true"<?php endif; ?>
-                                />
-                                <label id="lbl_categories_<?= $this->uniqueId ?>_<?= $category->id ?>" for="ctrl_categories_<?= $this->uniqueId ?>_<?= $category->id ?>"><?= $category->name ?></label>
+                    <?php foreach ($this->categories as $key => $category): ?>
+                    <span>
+                                <input type="checkbox" name="article_categories[]"
+                                       id="ctrl_categories_<?= $this->uniqueId ?>_<?= $category->id ?>"
+                                       class="checkbox article_category_checkbox" value="<?= $category->id ?>"
+                        <?php if ($category->checked): ?>checked="true"<?php endif; ?>
+                        />
+                                <label id="lbl_categories_<?= $this->uniqueId ?>_<?= $category->id ?>"
+                                       for="ctrl_categories_<?= $this->uniqueId ?>_<?= $category->id ?>">
+                                    <?php if ($category->frontendTitle): ?><?= $category->frontendTitle ?><?php endif; ?>
+                                    <?php if (!$category->frontendTitle): ?> <?= $category->title ?><?php endif; ?>
+                                </label>
                            </span>
-                        <?php endforeach; ?>
+                    <?php endforeach; ?>
                 </fieldset>
             </div>
             <?php endif; ?>
-        <?php endif; ?>
-    </div>
+            <?php endif; ?>
+        </div>
 
 
-
-
-         <div class="extend-search extend-button">Suche erweitern</div>
         <button type="submit" id="ctrl_submit_<?= $this->uniqueId ?>" class="submit"><?= $this->search ?></button>
 
-  </form>
-  <?php if ($this->header): ?>
-    <p class="header"><?= $this->header ?> (<?= $this->duration ?>)</p>
-  <?php endif; ?>
-  <?=  $this->categoryResults ?>
-  <?=  $this->categoryPagination ?>
-<div class="close-window"><i class="fas fa-times"></i></div>
-</div>
+        </form>
+        <?php if ($this->header): ?>
+        <p class="header"><?= $this->header ?> (<?= $this->duration ?>)</p>
+        <?php endif; ?>
+        <?=  $this->categoryResults ?>
+        <?=  $this->categoryPagination ?>
+        <div class="close-window"><i class="fas fa-times"></i></div>
+    </div>
 </div>
 <?php $this->endblock(); ?>
 
