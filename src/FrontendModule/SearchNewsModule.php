@@ -20,9 +20,12 @@ use Petzka\ContaoNewsSearch\Search\SearchResult;
 use Codefog\NewsCategoriesBundle\Model\NewsCategoryModel;
 
 use Contao\CoreBundle\Exception\PageNotFoundException;
-use Contao\Search;
-use Contao\File;
+use Contao\FilesModel;
+use Contao\Date;
+use Contao\News;
 use Contao\FrontendTemplate;
+use Contao\ContentModel;
+use Contao\ModuleRegistration;
 use \Config;
 
 use Patchwork\Utf8;
@@ -134,9 +137,10 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $this->Template->advanced = ($this->searchType == 'advanced');
         $this->Template->extended = $extended;
 
+        $searchIndexDb = $this->Database->execute("SELECT * FROM tl_search_index ORDER BY word");
 
+        $this->Template->searchIndex = $searchIndexDb->fetchAssoc();
         $this->Template->topics = NewsCategoryModel::findPublishedByPid('0');
-
 
 
         $this->Template->extensionBoxClass = 'closed';
@@ -169,9 +173,12 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $categories = array();
 
         foreach ($this->Template->topics as $topic) {
+
             $topicCategories = NewsCategoryModel::findPublishedByPid($topic->id);
-            foreach ($topicCategories as $category) {
-                $categories[] = $category;
+            if ($topicCategories && count($topicCategories)) {
+                foreach ($topicCategories as $category) {
+                    $categories[] = $category;
+                }
             }
 
         }
@@ -240,163 +247,335 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
         // Execute the search if there are keywords
         if ($strKeywords != '' && $strKeywords != '*') {
-            // Search pages
-
-            /** @var PageModel $objPage */
-            global $objPage;
-            $varRootId = $objPage->rootId;
-            $arrPages = $this->Database->getChildRecords($objPage->rootId, 'tl_page');
-
-            // HOOK: add custom logic (see #5223)
-            if (isset($GLOBALS['TL_HOOKS']['customizeSearch']) && \is_array($GLOBALS['TL_HOOKS']['customizeSearch'])) {
-                foreach ($GLOBALS['TL_HOOKS']['customizeSearch'] as $callback) {
-                    $this->import($callback[0]);
-                    $this->{$callback[0]}->{$callback[1]}($arrPages, $strKeywords, $strQueryType, $blnFuzzy, $this);
-                }
-            }
-
-            // Return if there are no pages
-            if (empty($arrPages) || !\is_array($arrPages)) {
-                return;
-            }
-
-            $strCachePath = StringUtil::stripRootDir(System::getContainer()->getParameter('kernel.cache_dir'));
 
             $arrResult = null;
-            $strChecksum = md5($strKeywords . $strQueryType . $varRootId . $blnFuzzy);
-            $query_starttime = microtime(true);
-            $strCacheFile = $strCachePath . '/contao/search/' . $strChecksum . '.json';
 
+            $query_starttime = microtime(true);
 
             if (!count($activeCategories)) {
-                // old search method ...
-                // Load the cached result
-                if (file_exists(System::getContainer()->getParameter('kernel.project_dir') . '/' . $strCacheFile)) {
-                    $objFile = new File($strCacheFile);
-
-                    if ($objFile->mtime > time() - 1800) {
-                        $arrResult = json_decode($objFile->getContent(), true);
-                    } else {
-                        $objFile->delete();
-                    }
-                }
-                // Cache the result
-                if ($arrResult === null) {
-                    try {
-                        $objSearch = Search::searchFor($strKeywords, ($strQueryType == 'or'), $arrPages, 0, 0, $blnFuzzy);
-                        $arrResult = $objSearch->fetchAllAssoc();
-                    } catch (\Exception $e) {
-                        $this->log('Website search failed: ' . $e->getMessage(), __METHOD__, TL_ERROR);
-                        $message = $e->getMessage();
-
-                        $arrResult = array();
-                    }
-
-                    File::putContent($strCacheFile, json_encode($arrResult));
-                }
+                $arrResult = NewsSearch::searchFor($strKeywords, array());
             } else {
-
-                $arrResult = NewsSearch::searchFor($strKeywords, $arrPages, $activeCategories);
-
+                $arrResult = NewsSearch::searchFor($strKeywords, $activeCategories);
             }
-
-
             $query_endtime = microtime(true);
 
-
-            $count = \count($arrResult);
+            $count = count($arrResult);
 
             $this->Template->count = $count;
-            $this->Template->page = null;
             $this->Template->keywords = $strKeywords;
-
 
             // No results
             if ($count < 1) {
                 $this->Template->header = sprintf($GLOBALS['TL_LANG']['MSC']['sEmpty'], $strKeywords);
                 $this->Template->duration = substr($query_endtime - $query_starttime, 0, 6) . ' ' . $GLOBALS['TL_LANG']['MSC']['seconds'];
-
                 return;
             }
 
-            $from = 1;
-            $to = $count;
-
-            // Pagination
-            if ($this->perPage > 0) {
-                $id = 'page_s' . $this->id;
-                $page = Input::get($id) ?? 1;
-                $per_page = Input::get('per_page') ?: $this->perPage;
-
-                // Do not index or cache the page if the page number is outside the range
-                if ($page < 1 || $page > max(ceil($count / $per_page), 1)) {
-                    throw new PageNotFoundException('Page not found: ' . Environment::get('uri'));
-                }
-
-                $from = (($page - 1) * $per_page) + 1;
-                $to = (($from + $per_page) > $count) ? $count : ($from + $per_page - 1);
-
-                // Pagination menu
-                if ($to < $count || $from > 1) {
-                    $objPagination = new Pagination($count, $per_page, Config::get('maxPaginationLinks'), $id);
-                    $this->Template->pagination = $objPagination->generate("\n  ");
-                    $this->Template->categoryPagination = $objPagination->generate("\n  ");
-
-                }
-
-                $this->Template->page = $page;
+            $newsArticles = $this->parseArticles($arrResult);
+            foreach($newsArticles as $news){
+                $this->Template->categoryResults .= $news;
             }
 
-
-            // Get the results
-            if (!count($activeCategories)) {
-                for ($i = ($from - 1); $i < $to && $i < $count; $i++) {
-                    $objTemplate = new FrontendTemplate($this->searchTpl);
-                    $objTemplate->setData($arrResult[$i]);
-                    $objTemplate->href = $arrResult[$i]['url'];
-                    $objTemplate->link = $arrResult[$i]['title'];
-                    $objTemplate->url = StringUtil::specialchars(urldecode($arrResult[$i]['url']), true, true);
-                    $objTemplate->title = StringUtil::specialchars(StringUtil::stripInsertTags($arrResult[$i]['title']));
-                    $objTemplate->class = (($i == ($from - 1)) ? 'first ' : '') . (($i == ($to - 1) || $i == ($count - 1)) ? 'last ' : '') . (($i % 2 == 0) ? 'even' : 'odd');
-                    $objTemplate->relevance = sprintf($GLOBALS['TL_LANG']['MSC']['relevance'], number_format($arrResult[$i]['relevance'] / $arrResult[0]['relevance'] * 100, 2) . '%');
-
-                    $arrContext = array();
-                    $strText = StringUtil::stripInsertTags($arrResult[$i]['text']);
-                    $arrMatches = StringUtil::trimsplit(',', $arrResult[$i]['matches']);
-
-                    // Get the context
-                    foreach ($arrMatches as $strWord) {
-                        $arrChunks = array();
-                        preg_match_all('/(^|\b.{0,' . $this->contextLength . '}(?:\PL|\p{Hiragana}|\p{Katakana}|\p{Han}|\p{Myanmar}|\p{Khmer}|\p{Lao}|\p{Thai}|\p{Tibetan}))' . preg_quote($strWord, '/') . '((?:\PL|\p{Hiragana}|\p{Katakana}|\p{Han}|\p{Myanmar}|\p{Khmer}|\p{Lao}|\p{Thai}|\p{Tibetan}).{0,' . $this->contextLength . '}\b|$)/ui', $strText, $arrChunks);
-
-                        foreach ($arrChunks[0] as $strContext) {
-                            $arrContext[] = ' ' . $strContext . ' ';
-                        }
-                    }
-
-                    // Shorten the context and highlight all keywords
-                    if (!empty($arrContext)) {
-                        $objTemplate->context = trim(StringUtil::substrHtml(implode('…', $arrContext), $this->totalLength));
-                        $objTemplate->context = preg_replace('/(?<=^|\PL|\p{Hiragana}|\p{Katakana}|\p{Han}|\p{Myanmar}|\p{Khmer}|\p{Lao}|\p{Thai}|\p{Tibetan})(' . implode('|', array_map('preg_quote', $arrMatches)) . ')(?=\PL|\p{Hiragana}|\p{Katakana}|\p{Han}|\p{Myanmar}|\p{Khmer}|\p{Lao}|\p{Thai}|\p{Tibetan}|$)/ui', '<mark class="highlight">$1</mark>', $objTemplate->context);
-
-                        $objTemplate->hasContext = true;
-                    }
-
-
-                    $this->Template->categoryResults .= $objTemplate->parse();
-                    $this->Template->results .= $objTemplate->parse();
-                }
-            } else {
-                $this->Template->categoryResults = SearchResult::parse($arrResult);
-                $this->Template->results = SearchResult::parse($arrResult);
-            }
-
-
-            //  throw new \Exception(print_r($this->Template->categoryResults));
-
-            $this->Template->header = vsprintf($GLOBALS['TL_LANG']['MSC']['sResults'], array($from, $to, $count, $strKeywords));
+            $this->Template->header = $count." Ergebnisse";
             $this->Template->duration = substr($query_endtime - $query_starttime, 0, 6) . ' ' . $GLOBALS['TL_LANG']['MSC']['seconds'];
         }
         return parent::compile();
+    }
+
+    /**
+     * Parse an item and return it as string
+     *
+     * @param NewsModel $objArticle
+     * @param boolean $blnAddArchive
+     * @param string $strClass
+     * @param integer $intCount
+     *
+     * @return string
+     */
+    protected function parseArticle($objArticle, $blnAddArchive = false, $strClass = '', $intCount = 0)
+    {
+        $objTemplate = new FrontendTemplate($this->news_template ?: 'news_latest');
+        $objTemplate->setData($objArticle->row());
+
+        if ($objArticle->cssClass != '') {
+            $strClass = ' ' . $objArticle->cssClass . $strClass;
+        }
+
+        if ($objArticle->featured) {
+            $strClass = ' featured' . $strClass;
+        }
+
+        $objTemplate->class = $strClass;
+        $objTemplate->newsHeadline = $objArticle->headline;
+        $objTemplate->subHeadline = $objArticle->subheadline;
+        $objTemplate->hasSubHeadline = $objArticle->subheadline ? true : false;
+        $objTemplate->linkHeadline = $this->generateLink($objArticle->headline, $objArticle, $blnAddArchive);
+        $objTemplate->more = $this->generateLink($GLOBALS['TL_LANG']['MSC']['more'], $objArticle, $blnAddArchive, true);
+        $objTemplate->link = News::generateNewsUrl($objArticle, $blnAddArchive);
+        $objTemplate->archive = $objArticle->getRelated('pid');
+        $objTemplate->count = $intCount; // see #5708
+        $objTemplate->text = '';
+        $objTemplate->hasText = false;
+        $objTemplate->hasTeaser = false;
+
+        // Clean the RTE output
+        if ($objArticle->teaser != '') {
+            $objTemplate->hasTeaser = true;
+            $objTemplate->teaser = StringUtil::toHtml5($objArticle->teaser);
+            $objTemplate->teaser = StringUtil::encodeEmail($objTemplate->teaser);
+        }
+
+        // Display the "read more" button for external/article links
+        if ($objArticle->source != 'default') {
+            $objTemplate->text = true;
+            $objTemplate->hasText = true;
+        } // Compile the news text
+        else {
+            $id = $objArticle->id;
+
+            $objTemplate->text = function () use ($id) {
+                $strText = '';
+                $objElement = ContentModel::findPublishedByPidAndTable($id, 'tl_news');
+
+                if ($objElement !== null) {
+                    while ($objElement->next()) {
+                        $strText .= $this->getContentElement($objElement->current());
+                    }
+                }
+
+                return $strText;
+            };
+
+            $objTemplate->hasText = static function () use ($objArticle) {
+                return ContentModel::countPublishedByPidAndTable($objArticle->id, 'tl_news') > 0;
+            };
+        }
+
+        $arrMeta = $this->getMetaFields($objArticle);
+
+        // Add the meta information
+        $objTemplate->date = $arrMeta['date'];
+        $objTemplate->hasMetaFields = !empty($arrMeta);
+        $objTemplate->numberOfComments = $arrMeta['ccount'];
+        $objTemplate->commentCount = $arrMeta['comments'];
+        $objTemplate->timestamp = $objArticle->date;
+        $objTemplate->author = $arrMeta['author'];
+        $objTemplate->datetime = date('Y-m-d\TH:i:sP', $objArticle->date);
+
+        $objTemplate->addImage = false;
+
+        // Add an image
+        if ($objArticle->addImage && $objArticle->singleSRC != '') {
+            $objModel = FilesModel::findByUuid($objArticle->singleSRC);
+
+            if ($objModel !== null && is_file(System::getContainer()->getParameter('kernel.project_dir') . '/' . $objModel->path)) {
+                // Do not override the field now that we have a model registry (see #6303)
+                $arrArticle = $objArticle->row();
+
+                // Override the default image size
+                if ($this->imgSize != '') {
+                    $size = StringUtil::deserialize($this->imgSize);
+
+                    if ($size[0] > 0 || $size[1] > 0 || is_numeric($size[2]) || ($size[2][0] ?? null) === '_') {
+                        $arrArticle['size'] = $this->imgSize;
+                    }
+                }
+
+                $arrArticle['singleSRC'] = $objModel->path;
+                $this->addImageToTemplate($objTemplate, $arrArticle, null, null, $objModel);
+
+                // Link to the news article if no image link has been defined (see #30)
+                if (!$objTemplate->fullsize && !$objTemplate->imageUrl) {
+                    // Unset the image title attribute
+                    $picture = $objTemplate->picture;
+                    unset($picture['title']);
+                    $objTemplate->picture = $picture;
+
+                    // Link to the news article
+                    $objTemplate->href = $objTemplate->link;
+                    $objTemplate->linkTitle = StringUtil::specialchars(sprintf($GLOBALS['TL_LANG']['MSC']['readMore'], $objArticle->headline), true);
+
+                    // If the external link is opened in a new window, open the image link in a new window, too (see #210)
+                    if ($objTemplate->source == 'external' && $objTemplate->target && strpos($objTemplate->attributes, 'target="_blank"') === false) {
+                        $objTemplate->attributes .= ' target="_blank"';
+                    }
+                }
+            }
+        }
+
+        $objTemplate->enclosure = array();
+
+        // Add enclosures
+        if ($objArticle->addEnclosure) {
+            $this->addEnclosuresToTemplate($objTemplate, $objArticle->row());
+        }
+
+        // HOOK: add custom logic
+        if (isset($GLOBALS['TL_HOOKS']['parseArticles']) && \is_array($GLOBALS['TL_HOOKS']['parseArticles'])) {
+            foreach ($GLOBALS['TL_HOOKS']['parseArticles'] as $callback) {
+                $this->import($callback[0]);
+                $this->{$callback[0]}->{$callback[1]}($objTemplate, $objArticle->row(), $this);
+            }
+        }
+
+        // Tag the response
+        if (System::getContainer()->has('fos_http_cache.http.symfony_response_tagger')) {
+            /** @var ResponseTagger $responseTagger */
+            $responseTagger = System::getContainer()->get('fos_http_cache.http.symfony_response_tagger');
+            $responseTagger->addTags(array('contao.db.tl_news.' . $objArticle->id));
+            $responseTagger->addTags(array('contao.db.tl_news_archive.' . $objArticle->pid));
+        }
+
+        return $objTemplate->parse();
+    }
+
+    /**
+     * Parse one or more items and return them as array
+     *
+     * @param Collection $objArticles
+     * @param boolean $blnAddArchive
+     *
+     * @return array
+     */
+    protected function parseArticles($objArticles, $blnAddArchive = false)
+    {
+        $limit = count($objArticles);
+
+        if ($limit < 1) {
+            return array();
+        }
+
+        $count = 0;
+        $arrArticles = array();
+
+        foreach ($objArticles as $objArticle) {
+            $arrArticles[] = $this->parseArticle($objArticle, $blnAddArchive, ((++$count == 1) ? ' first' : '') . (($count == $limit) ? ' last' : '') . ((($count % 2) == 0) ? ' odd' : ' even'), $count);
+        }
+
+        return $arrArticles;
+    }
+
+    /**
+     * Return the meta fields of a news article as array
+     *
+     * @param NewsModel $objArticle
+     *
+     * @return array
+     */
+    protected function getMetaFields($objArticle)
+    {
+        $meta = StringUtil::deserialize($this->news_metaFields);
+
+        if (!\is_array($meta))
+        {
+            return array();
+        }
+
+        /** @var PageModel $objPage */
+        global $objPage;
+
+        $return = array();
+
+        foreach ($meta as $field)
+        {
+            switch ($field)
+            {
+                case 'date':
+                    $return['date'] = Date::parse($objPage->datimFormat, $objArticle->date);
+                    break;
+
+                case 'author':
+                    /** @var UserModel $objAuthor */
+                    if (($objAuthor = $objArticle->getRelated('author')) instanceof UserModel)
+                    {
+                        $return['author'] = $GLOBALS['TL_LANG']['MSC']['by'] . ' <span itemprop="author">' . $objAuthor->name . '</span>';
+                    }
+                    break;
+
+                case 'comments':
+                    if ($objArticle->noComments || $objArticle->source != 'default')
+                    {
+                        break;
+                    }
+
+                    $bundles = System::getContainer()->getParameter('kernel.bundles');
+
+                    if (!isset($bundles['ContaoCommentsBundle']))
+                    {
+                        break;
+                    }
+
+                    $intTotal = CommentsModel::countPublishedBySourceAndParent('tl_news', $objArticle->id);
+                    $return['ccount'] = $intTotal;
+                    $return['comments'] = sprintf($GLOBALS['TL_LANG']['MSC']['commentCount'], $intTotal);
+                    break;
+            }
+        }
+
+        return $return;
+    }
+
+    /**
+     * Generate a URL and return it as string
+     *
+     * @param NewsModel $objItem
+     * @param boolean   $blnAddArchive
+     *
+     * @return string
+     *
+     * @deprecated Deprecated since Contao 4.1, to be removed in Contao 5.
+     *             Use News::generateNewsUrl() instead.
+     */
+    protected function generateNewsUrl($objItem, $blnAddArchive=false)
+    {
+        @trigger_error('Using ModuleNews::generateNewsUrl() has been deprecated and will no longer work in Contao 5.0. Use News::generateNewsUrl() instead.', E_USER_DEPRECATED);
+
+        return News::generateNewsUrl($objItem, $blnAddArchive);
+    }
+
+    /**
+     * Generate a link and return it as string
+     *
+     * @param string    $strLink
+     * @param NewsModel $objArticle
+     * @param boolean   $blnAddArchive
+     * @param boolean   $blnIsReadMore
+     *
+     * @return string
+     */
+    protected function generateLink($strLink, $objArticle, $blnAddArchive=false, $blnIsReadMore=false)
+    {
+        // Internal link
+        if ($objArticle->source != 'external')
+        {
+            return sprintf(
+                '<a href="%s" title="%s" itemprop="url"><span itemprop="headline">%s</span>%s</a>',
+                News::generateNewsUrl($objArticle, $blnAddArchive),
+                StringUtil::specialchars(sprintf($GLOBALS['TL_LANG']['MSC']['readMore'], $objArticle->headline), true),
+                $strLink,
+                ($blnIsReadMore ? '<span class="invisible"> ' . $objArticle->headline . '</span>' : '')
+            );
+        }
+
+        // Encode e-mail addresses
+        if (0 === strncmp($objArticle->url, 'mailto:', 7))
+        {
+            $strArticleUrl = StringUtil::encodeEmail($objArticle->url);
+        }
+
+        // Ampersand URIs
+        else
+        {
+            $strArticleUrl = ampersand($objArticle->url);
+        }
+
+        // External link
+        return sprintf(
+            '<a href="%s" title="%s"%s itemprop="url"><span itemprop="headline">%s</span></a>',
+            $strArticleUrl,
+            StringUtil::specialchars(sprintf($GLOBALS['TL_LANG']['MSC']['open'], $strArticleUrl)),
+            ($objArticle->target ? ' target="_blank" rel="noreferrer noopener"' : ''),
+            $strLink
+        );
     }
 }

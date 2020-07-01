@@ -15,4 +15,7 @@
 
 // Palettes
 
-$GLOBALS['TL_DCA']['tl_module']['palettes']['search_news_categories'] = $GLOBALS['TL_DCA']['tl_module']['palettes']['search'];
+$GLOBALS['TL_DCA']['tl_module']['palettes']['search_news_categories'] = $GLOBALS['TL_DCA']['tl_module']['palettes']['default'];
+
+$GLOBALS['TL_DCA']['tl_module']['palettes']['search_news_categories'] .= ";{template_legend},news_template,customTpl";
+// print_r($GLOBALS['TL_DCA']['tl_module']['palettes']['search_news_categories']);

@@ -114,7 +114,9 @@
         <?php if ($this->header): ?>
         <p class="header"><?= $this->header ?> (<?= $this->duration ?>)</p>
         <?php endif; ?>
-        <?=  $this->categoryResults ?>
+        <div class="mod_newslist block">
+            <?=  $this->categoryResults ?>
+        </div>
         <?=  $this->categoryPagination ?>
         <div class="close-window"><i class="fas fa-times"></i></div>
     </div>
