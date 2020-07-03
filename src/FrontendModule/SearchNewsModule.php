@@ -139,9 +139,21 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
         $searchIndexDb = $this->Database->execute("SELECT * FROM tl_search_index ORDER BY word");
 
-        $this->Template->searchIndex = $searchIndexDb->fetchAssoc();
-        $this->Template->topics = NewsCategoryModel::findPublishedByPid('0');
 
+        $this->Template->searchIndex = $searchIndexDb->fetchAssoc();
+
+        $mainTopics = NewsCategoryModel::findPublishedByPid('0');
+        $allTopics = array();
+        foreach ($mainTopics as $mainTopic) {
+            $topics = NewsCategoryModel::findPublishedByPid($mainTopic->id);
+            if ($topics && count($topics)) {
+                foreach ($topics as $topic) {
+                    $allTopics[] = $topic;
+                }
+            }
+        }
+
+        $this->Template->topics = $allTopics;
 
         $this->Template->extensionBoxClass = 'closed';
         if ($extended === '1') {
@@ -170,10 +182,11 @@ class SearchNewsModule extends \Contao\ModuleSearch
                 }
             }
         }
+
         $categories = array();
 
-        foreach ($this->Template->topics as $topic) {
 
+        foreach ($this->Template->topics as $topic) {
             $topicCategories = NewsCategoryModel::findPublishedByPid($topic->id);
             if ($topicCategories && count($topicCategories)) {
                 foreach ($topicCategories as $category) {
@@ -272,11 +285,11 @@ class SearchNewsModule extends \Contao\ModuleSearch
             }
 
             $newsArticles = $this->parseArticles($arrResult);
-            foreach($newsArticles as $news){
+            foreach ($newsArticles as $news) {
                 $this->Template->categoryResults .= $news;
             }
 
-            $this->Template->header = $count." Ergebnisse";
+            $this->Template->header = $count . " Ergebnisse";
             $this->Template->duration = substr($query_endtime - $query_starttime, 0, 6) . ' ' . $GLOBALS['TL_LANG']['MSC']['seconds'];
         }
         return parent::compile();
@@ -466,8 +479,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
     {
         $meta = StringUtil::deserialize($this->news_metaFields);
 
-        if (!\is_array($meta))
-        {
+        if (!\is_array($meta)) {
             return array();
         }
 
@@ -476,32 +488,27 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
         $return = array();
 
-        foreach ($meta as $field)
-        {
-            switch ($field)
-            {
+        foreach ($meta as $field) {
+            switch ($field) {
                 case 'date':
                     $return['date'] = Date::parse($objPage->datimFormat, $objArticle->date);
                     break;
 
                 case 'author':
                     /** @var UserModel $objAuthor */
-                    if (($objAuthor = $objArticle->getRelated('author')) instanceof UserModel)
-                    {
+                    if (($objAuthor = $objArticle->getRelated('author')) instanceof UserModel) {
                         $return['author'] = $GLOBALS['TL_LANG']['MSC']['by'] . ' <span itemprop="author">' . $objAuthor->name . '</span>';
                     }
                     break;
 
                 case 'comments':
-                    if ($objArticle->noComments || $objArticle->source != 'default')
-                    {
+                    if ($objArticle->noComments || $objArticle->source != 'default') {
                         break;
                     }
 
                     $bundles = System::getContainer()->getParameter('kernel.bundles');
 
-                    if (!isset($bundles['ContaoCommentsBundle']))
-                    {
+                    if (!isset($bundles['ContaoCommentsBundle'])) {
                         break;
                     }
 
@@ -519,14 +526,14 @@ class SearchNewsModule extends \Contao\ModuleSearch
      * Generate a URL and return it as string
      *
      * @param NewsModel $objItem
-     * @param boolean   $blnAddArchive
+     * @param boolean $blnAddArchive
      *
      * @return string
      *
      * @deprecated Deprecated since Contao 4.1, to be removed in Contao 5.
      *             Use News::generateNewsUrl() instead.
      */
-    protected function generateNewsUrl($objItem, $blnAddArchive=false)
+    protected function generateNewsUrl($objItem, $blnAddArchive = false)
     {
         @trigger_error('Using ModuleNews::generateNewsUrl() has been deprecated and will no longer work in Contao 5.0. Use News::generateNewsUrl() instead.', E_USER_DEPRECATED);
 
@@ -536,18 +543,17 @@ class SearchNewsModule extends \Contao\ModuleSearch
     /**
      * Generate a link and return it as string
      *
-     * @param string    $strLink
+     * @param string $strLink
      * @param NewsModel $objArticle
-     * @param boolean   $blnAddArchive
-     * @param boolean   $blnIsReadMore
+     * @param boolean $blnAddArchive
+     * @param boolean $blnIsReadMore
      *
      * @return string
      */
-    protected function generateLink($strLink, $objArticle, $blnAddArchive=false, $blnIsReadMore=false)
+    protected function generateLink($strLink, $objArticle, $blnAddArchive = false, $blnIsReadMore = false)
     {
         // Internal link
-        if ($objArticle->source != 'external')
-        {
+        if ($objArticle->source != 'external') {
             return sprintf(
                 '<a href="%s" title="%s" itemprop="url"><span itemprop="headline">%s</span>%s</a>',
                 News::generateNewsUrl($objArticle, $blnAddArchive),
@@ -558,14 +564,10 @@ class SearchNewsModule extends \Contao\ModuleSearch
         }
 
         // Encode e-mail addresses
-        if (0 === strncmp($objArticle->url, 'mailto:', 7))
-        {
+        if (0 === strncmp($objArticle->url, 'mailto:', 7)) {
             $strArticleUrl = StringUtil::encodeEmail($objArticle->url);
-        }
-
-        // Ampersand URIs
-        else
-        {
+        } // Ampersand URIs
+        else {
             $strArticleUrl = ampersand($objArticle->url);
         }
 
