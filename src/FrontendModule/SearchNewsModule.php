@@ -124,7 +124,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $isAllTopics = Input::get('is_all_topics');
         $isAllCategories = Input::get('is_all_categories');
 
-        $timeSpan = Input::get('time_span') || 'all';
+        $timeSpan = Input::get('time_span');
 
         $this->Template->uniqueId = $this->id;
         $this->Template->queryType = $strQueryType;
@@ -144,13 +144,22 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
         $mainTopics = NewsCategoryModel::findPublishedByPid('0');
         $allTopics = array();
-        foreach ($mainTopics as $mainTopic) {
-            $topics = NewsCategoryModel::findPublishedByPid($mainTopic->id);
-            if ($topics && count($topics)) {
-                foreach ($topics as $topic) {
-                    $allTopics[] = $topic;
+
+
+
+        $ignoreFirstLayer = $this->ignore_first_category_layer;
+
+        if ($ignoreFirstLayer) {
+            foreach ($mainTopics as $mainTopic) {
+                $topics = NewsCategoryModel::findPublishedByPid($mainTopic->id);
+                if ($topics && count($topics)) {
+                    foreach ($topics as $topic) {
+                        $allTopics[] = $topic;
+                    }
                 }
             }
+        } else {
+            $allTopics = $mainTopics;
         }
 
         $this->Template->topics = $allTopics;
@@ -258,6 +267,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $this->Template->categoryPagination = '';
         $this->Template->categoryResults = '';
 
+
         // Execute the search if there are keywords
         if ($strKeywords != '' && $strKeywords != '*') {
 
@@ -266,9 +276,9 @@ class SearchNewsModule extends \Contao\ModuleSearch
             $query_starttime = microtime(true);
 
             if (!count($activeCategories)) {
-                $arrResult = NewsSearch::searchFor($strKeywords, array());
+                $arrResult = NewsSearch::searchFor($strKeywords, array(), $timeSpan);
             } else {
-                $arrResult = NewsSearch::searchFor($strKeywords, $activeCategories);
+                $arrResult = NewsSearch::searchFor($strKeywords, $activeCategories, $timeSpan);
             }
             $query_endtime = microtime(true);
 

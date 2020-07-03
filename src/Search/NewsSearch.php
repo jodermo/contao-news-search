@@ -31,7 +31,7 @@ class NewsSearch
      *
      * @throws \Exception If the cleaned keyword string is empty
      */
-    public static function searchFor($strKeywords, $categories = array())
+    public static function searchFor($strKeywords, $categories = array(), $timespan)
     {
 
 
@@ -57,12 +57,21 @@ class NewsSearch
             $categoryNews = NewsModel::findBy('published', 1);
         }
 
+        $WeekAgo = strtotime("-1 week");
+        $MonthAgo = strtotime("-1 month");
+        $YearAgo = strtotime("-1 year");
 
         if ($categoryNews !== null && count($categoryNews)) {
             foreach ($categoryNews as $news) {
                 $hasKeywords = $searchResult->contentKeywordFields($news, $arrChunks);
                 if ($hasKeywords && count($hasKeywords)) {
-                    $categoryContents[$news->id] = $news;
+                    if ($timespan === 'week' && $news->date >= $WeekAgo
+                        || $timespan === 'month' && $news->date >= $MonthAgo
+                        || $timespan === 'year' && $news->date >= $YearAgo
+                        || $timespan === 'all') {
+                        $categoryContents[$news->id] = $news;
+                    }
+
                 }
             }
         }

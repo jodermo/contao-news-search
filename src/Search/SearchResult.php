@@ -39,11 +39,15 @@ class SearchResult
         if ($arrKeywords && count($arrKeywords)) {
             foreach ($arrKeywords as $keyword) {
                 if ($keyword[0] && $keyword[0] !== null && $keyword[0] !== '') {
+                    $fieldHasKeyword = array();
                     foreach ($searchInFields as $field) {
-                        $fieldHasKeyword = $this->fieldHasKeyword($content->{$field}, $keyword);
+                        $fieldHasKeyword = $this->fieldHasKeyword($content->{$field}, $keyword, $fieldHasKeyword);
 
-                        if ($content->{$field} && $fieldHasKeyword) {
-
+                        if ($content->{$field} && $fieldHasKeyword && count($fieldHasKeyword)) {
+                            foreach ($fieldHasKeyword as $keyword){
+                                // highlight words
+                                $content->{$field} = preg_replace('/\p{L}*?' . preg_quote($keyword[0]) . '\p{L}*/ui', '<span class="highlight">$0</span>', $content->{$field});
+                            }
                             if (!$results[$field]) {
                                 $results[$field] = array();
                             }
@@ -62,17 +66,15 @@ class SearchResult
      * check content field for keyword
      * @return array
      */
-    public function fieldHasKeyword($value, $keyword)
+    public function fieldHasKeyword($value, $keyword, $hasKeywords)
     {
         $value = strtolower(\StringUtil::specialchars(strip_tags(\StringUtil::stripInsertTags($value))));
         if ($value !== null && $keyword !== null && $keyword[0] !== null && is_string($value) && $value !== '') {
-            // print_r('<b>'.$keyword[0].'</b>|'.$value.'<br>');
-
             if (strpos($value, $keyword[0]) !== false) {
-                return true;
+                $hasKeywords[] = $keyword;;
             }
         }
-        return false;
+        return $hasKeywords;
     }
 
     /**
