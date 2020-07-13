@@ -1,5 +1,20 @@
 <div class="mod_search <?php echo $this->class; ?> block"<?php echo $this->cssID; ?><?php if ($this->style): ?> style="<?php echo $this->style; ?>"<?php endif; ?>>
 <?php $this->block('content'); ?>
+
+<?php if ($this->autocomplete): ?>
+<script>
+    var autocompleteData = <?= $this->autocomplete ?>;
+
+    window.addEventListener('load', function () {
+        if (window.autocomplete) {
+            window.autocomplete(document.getElementById("ctrl_keywords_<?= $this->uniqueId ?>"), autocompleteData);
+        }else if(autocomplete){
+            autocomplete(document.getElementById("ctrl_keywords_<?= $this->uniqueId ?>"), autocompleteData);
+        }
+    });
+
+</script>
+<?php endif; ?>
 <div id="search_<?php echo $this->id; ?>" class="searchbox ce_form">
     <?php if ($this->headline): ?>
     <div class="label"><?php echo $this->headline; ?></div>
@@ -16,7 +31,7 @@
 
         <label for="ctrl_keywords_<?= $this->uniqueId ?>" class="invisible"><?= $this->keywordLabel ?></label>
         <div class="input-button-set">
-            <input class="search-input" type="search" name="keywords" id="ctrl_keywords_<?= $this->uniqueId ?>"
+            <input class="search-input" type="search" name="keywords" autocomplete="off" id="ctrl_keywords_<?= $this->uniqueId ?>"
                    class="text" value="<?= $this->keyword ?>">
             <div class="extend-search <?php if ($this->extensionBoxClass === 'open'): ?>active<?php endif; ?>"></div>
         </div>
@@ -41,7 +56,7 @@
                     </select>
                 </div>
             </div>
-            <?php if ($this->Template->topicsAvailable): ?>
+            <?php if ($this->topicsAvailable): ?>
             <div class="widget widget-checkbox">
                 <fieldset id="ctrl_topics_<?= $this->uniqueId ?>" class="checkbox_container">
                     <legend>Themenbereich</legend>
@@ -96,7 +111,8 @@
                         />
                                 <label id="lbl_categories_<?= $this->uniqueId ?>_<?= $category->id ?>"
                                        for="ctrl_categories_<?= $this->uniqueId ?>_<?= $category->id ?>">
-                                    <?php if ($category->frontendTitle): ?><?= $category->frontendTitle ?><?php endif; ?>
+                                    <?php if ($category->frontendTitle): ?><?= $category->
+                                    frontendTitle ?><?php endif; ?>
                                     <?php if (!$category->frontendTitle): ?> <?= $category->title ?><?php endif; ?>
                                 </label>
                            </span>
@@ -112,7 +128,7 @@
 
         </form>
         <?php if ($this->header): ?>
-        <p class="header"><?= $this->header ?> (<?= $this->duration ?>)</p>
+        <p class="search-header"><?= $this->header ?> (<?= $this->duration ?>)</p>
         <?php endif; ?>
         <div class="mod_newslist block">
             <?=  $this->categoryResults ?>

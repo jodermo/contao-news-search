@@ -12,3 +12,5 @@
 $GLOBALS['FE_MOD']['application']['search_news_categories'] = 'Petzka\ContaoNewsSearch\FrontendModule\SearchNewsModule';
 
 $GLOBALS['TL_JAVASCRIPT'][] = 'bundles/contaonewssearch/js/contaoNewsSearch.js';
+
+$GLOBALS['TL_JAVASCRIPT'][] = 'bundles/contaonewssearch/js/autocomplete.js';

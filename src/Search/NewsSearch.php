@@ -31,7 +31,7 @@ class NewsSearch
      *
      * @throws \Exception If the cleaned keyword string is empty
      */
-    public static function searchFor($strKeywords, $categories = array(), $timespan)
+    public static function searchFor($strKeywords, $newsCategories, $topics = array(), $categories = array(), $timespan)
     {
 
 
@@ -51,8 +51,8 @@ class NewsSearch
         $categoryContents = array();
         $searchResult = new SearchResult();
 
-        if ($categories && count($categories)) {
-            $categoryNews = NewsModel::findByCategories($categories);
+        if (($topics && count($topics)) || ($categories && count($categories))) {
+            $categoryNews = NewsModel::findByCategories($newsCategories, $topics, $categories);
         } else {
             $categoryNews = NewsModel::findBy('published', 1);
         }

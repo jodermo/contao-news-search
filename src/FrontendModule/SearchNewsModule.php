@@ -137,30 +137,68 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $this->Template->advanced = ($this->searchType == 'advanced');
         $this->Template->extended = $extended;
 
-        $searchIndexDb = $this->Database->execute("SELECT * FROM tl_search_index ORDER BY word");
+
+        $newsCategoriesDb = $this->Database->prepare("SELECT * FROM tl_news_categories")->execute();
+        $newsCategories = $newsCategoriesDb->fetchAllAssoc();
 
 
-        $this->Template->searchIndex = $searchIndexDb->fetchAssoc();
+        $searchIndexDb = $this->Database->prepare("SELECT * FROM tl_search_index ORDER BY word")->execute();
+        $searchIndex = $searchIndexDb->fetchAllAssoc();
+        $autocompleteArray = '[';
+        $autocompleteCount = 0;
+        $keywords = array();
 
-        $mainTopics = NewsCategoryModel::findPublishedByPid('0');
+
+        foreach ($searchIndex as $index) {
+            if ($index['word'] && is_string($index['word']) && !is_numeric($index['word'])) {
+                $wordExist = false;
+                foreach ($keywords as $word) {
+                    if ($word === $index['word']) {
+                        $wordExist = true;
+                    }
+                }
+                if (!$wordExist) {
+                    $keywords[] = $index['word'];
+                    $word = str_replace("'", " ", $index['word']);
+                    $autocompleteArray .= "'" . $word . "',";
+                    $autocompleteCount++;
+                }
+            }
+        }
+        if ($autocompleteCount) {
+            $autocompleteArray = substr($autocompleteArray, 0, -1);
+        }
+        $autocompleteArray .= ']';
+
+        // print_r($autocompleteArray);
+
+        $this->Template->autocomplete = $autocompleteArray;
         $allTopics = array();
-
-
-
-        $ignoreFirstLayer = $this->ignore_first_category_layer;
-
-        if ($ignoreFirstLayer) {
-            foreach ($mainTopics as $mainTopic) {
-                $topics = NewsCategoryModel::findPublishedByPid($mainTopic->id);
-                if ($topics && count($topics)) {
-                    foreach ($topics as $topic) {
-                        $allTopics[] = $topic;
+        if ($this->search_topics) {
+            $ids = StringUtil::deserialize($this->search_topics);
+            if (!$this->search_topic_subcategory) {
+                if ($ids && count($ids)) {
+                    $topics = NewsCategoryModel::findPublishedByIds($ids);
+                    if ($topics && count($topics)) {
+                        foreach ($topics as $topic) {
+                            $allTopics[] = $topic;
+                        }
+                    }
+                }
+            } else {
+                if ($ids && count($ids)) {
+                    foreach ($ids as $id) {
+                        $topics = NewsCategoryModel::findPublishedByPid($id);
+                        if ($topics && count($topics)) {
+                            foreach ($topics as $topic) {
+                                $allTopics[] = $topic;
+                            }
+                        }
                     }
                 }
             }
-        } else {
-            $allTopics = $mainTopics;
         }
+
 
         $this->Template->topics = $allTopics;
 
@@ -192,25 +230,11 @@ class SearchNewsModule extends \Contao\ModuleSearch
             }
         }
 
-        $categories = array();
-
-
-        foreach ($this->Template->topics as $topic) {
-            $topicCategories = NewsCategoryModel::findPublishedByPid($topic->id);
-            if ($topicCategories && count($topicCategories)) {
-                foreach ($topicCategories as $category) {
-                    $categories[] = $category;
-                }
-            }
-
-        }
-
         $this->Template->topicsAvailable = false;
+        $activeTopics = array();
         if (count($this->Template->topics)) {
             foreach ($this->Template->topics as $topic) {
                 $topic->{'checked'} = false;
-
-
                 if ($selectedTopics && count($selectedTopics)) {
                     foreach ($selectedTopics as $selectedTopic) {
                         if ($selectedTopic === $topic->id) {
@@ -218,18 +242,46 @@ class SearchNewsModule extends \Contao\ModuleSearch
                         }
                     }
                 }
-
-
                 if ($this->Template->allTopicsSelected) {
                     $topic->{'checked'} = true;
                 } else if ($isAllTopics) {
                     $topic->{'checked'} = false;
                 }
-
-
+                if ($topic->{'checked'}) {
+                    $activeTopics[] = $topic;
+                }
             }
+
             $this->Template->topicsAvailable = true;
         }
+
+        $categories = array();
+        if ($this->search_categories) {
+            $ids = StringUtil::deserialize($this->search_categories);
+            if (!$this->search_category_subcategory) {
+                if ($ids && count($ids)) {
+                    $categoryResults = NewsCategoryModel::findPublishedByIds($ids);
+                    if ($categoryResults && count($categoryResults)) {
+                        foreach ($categoryResults as $result) {
+                            $categories[] = $result;
+                        }
+                    }
+                }
+            } else {
+                if ($ids && count($ids)) {
+                    foreach ($ids as $id) {
+                        $categoryResults = NewsCategoryModel::findPublishedByPid($id);
+                        if ($categoryResults && count($categoryResults)) {
+                            foreach ($categoryResults as $result) {
+                                $categories[] = $result;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
         $this->Template->categories = $categories;
         $this->Template->categoriesVisible = false;
         $activeCategories = array();
@@ -275,11 +327,8 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
             $query_starttime = microtime(true);
 
-            if (!count($activeCategories)) {
-                $arrResult = NewsSearch::searchFor($strKeywords, array(), $timeSpan);
-            } else {
-                $arrResult = NewsSearch::searchFor($strKeywords, $activeCategories, $timeSpan);
-            }
+            $arrResult = NewsSearch::searchFor($strKeywords, $newsCategories, $activeTopics, $activeCategories, $timeSpan);
+
             $query_endtime = microtime(true);
 
             $count = count($arrResult);

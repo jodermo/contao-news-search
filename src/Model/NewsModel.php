@@ -19,26 +19,49 @@ class NewsModel extends \NewsModel
     /**
      * Find all article categories by topics
      */
-    public static function findByCategories($categories)
+    public static function findByCategories($newsCategories, $topics, $categories)
     {
-        $result = array();
-        foreach ($categories as $category) {
-            $newsDb = static::findBy('published', 1);
-            if ($newsDb !== null && count($newsDb)) {
-                foreach ($newsDb as $news) {
-                    $articleCategoryIds = \StringUtil::deserialize($news->article_categories, true);
-                    if($articleCategoryIds !== null && count($articleCategoryIds)) {
-                        foreach ($articleCategoryIds as $id) {
-                            if ($category->id === $id) {
-                                $result[$news->id] = $news;
+        /** @var Database $databaseAdapter */
+
+        $topicResults = array();
+
+
+        // get news, by topic as new category
+
+        if ($topics && count($topics)) {
+            foreach ($topics as $category) {
+                foreach ($newsCategories as $newsCategory) {
+                    if ($newsCategory['category_id'] === $category->id) {
+                        $news = static::findById($newsCategory['news_id']);
+                        $topicResults[$news->id] = $news;
+                    }
+                }
+            }
+        } else {
+            $topicResults = static::findBy('published', 1);
+        }
+
+
+        // filter results, by categories
+
+        if ($categories && count($categories)) {
+
+            $categoryResults = array();
+            foreach ($categories as $category) {
+                foreach ($newsCategories as $newsCategory) {
+                    if ($newsCategory['category_id'] === $category->id) {
+                        foreach ($topicResults as $news) {
+                            if ($news->id === $newsCategory['news_id']) {
+                                $categoryResults[] = $news;
                             }
                         }
                     }
-
                 }
             }
+            return $categoryResults;
+        } else {
+            return $topicResults;
         }
-        return $result;
     }
 
 }
