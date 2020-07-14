@@ -3,9 +3,14 @@
     this.searchButtons = [];
     this.searchInputs = [];
     this.searchViews = [];
+    this.suggestionButtons = [];
+    this.searchExtendedInputs = [];
     this.searchButtonClass = 'extend-search';
     this.searchViewsClass = 'search-extension';
-    this.searchInputClass = 'search-extended-input';
+    this.searchInputClass = 'search-input';
+    this.searchExtendedInputClass = 'search-extended-input';
+    this.suggestionsClass = 'search-suggestion';
+
 
     this.isExtended = false;
 
@@ -22,6 +27,8 @@
             this.searchButtons = document.getElementsByClassName(this.searchButtonClass);
             this.searchViews = document.getElementsByClassName(this.searchViewsClass);
             this.searchInputs = document.getElementsByClassName(this.searchInputClass);
+            this.searchExtendedInputs = document.getElementsByClassName(this.searchExtendedInputClass);
+            this.suggestionButtons = document.getElementsByClassName(this.suggestionsClass);
             initButtons();
         });
 
@@ -30,7 +37,14 @@
     }
 
     function setInputValue(value) {
+
         for (const input of this.searchInputs) {
+            input.value = value;
+        }
+    }
+
+    function setExtendedInputValue(value) {
+        for (const input of this.searchExtendedInputs) {
             input.value = value;
         }
     }
@@ -47,6 +61,19 @@
             button.addEventListener('click', (e) => {
                 e.preventDefault();
                 toggleSearchViews();
+            });
+        }
+        for (const button of this.suggestionButtons) {
+            button.addEventListener('click', (e) => {
+                if (button.dataset.word) {
+                    setInputValue(button.dataset.word);
+                }
+                if (button.dataset.form) {
+                    var form = document.getElementById(button.dataset.form);
+                    if(form){
+                        form.submit();
+                    }
+                }
             });
         }
     }
@@ -78,7 +105,7 @@
             view.classList.add('open');
         }
         setButtonsActive();
-        setInputValue(1);
+        setExtendedInputValue(1);
         this.isExtended = true;
     }
 
@@ -88,7 +115,7 @@
             view.classList.add('closed');
         }
         setButtonsInactive();
-        setInputValue(0);
+        setExtendedInputValue(0);
         this.isExtended = false;
     }
 

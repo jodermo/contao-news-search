@@ -1,6 +1,6 @@
 {
     "name": "petzka/contao-news-search",
-    "description": "",
+    "description": "Search for news by topics and categories",
     "type": "contao-bundle",
     "require": {
         "contao/core-bundle": "^4.9",

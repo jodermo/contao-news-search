@@ -3,12 +3,16 @@
 
 <?php if ($this->autocomplete): ?>
 <script>
-    var autocompleteData = <?= $this->autocomplete ?>;
+    var autocompleteData =
+    <
+        ? = $this->autocomplete ?
+    >
+    ;
 
     window.addEventListener('load', function () {
         if (window.autocomplete) {
             window.autocomplete(document.getElementById("ctrl_keywords_<?= $this->uniqueId ?>"), autocompleteData);
-        }else if(autocomplete){
+        } else if (autocomplete) {
             autocomplete(document.getElementById("ctrl_keywords_<?= $this->uniqueId ?>"), autocompleteData);
         }
     });
@@ -19,7 +23,7 @@
     <?php if ($this->headline): ?>
     <div class="label"><?php echo $this->headline; ?></div>
     <?php endif; ?>
-    <form
+    <form id="form_<?= $this->uniqueId ?>"
     <?php if ($this->action): ?> action="<?= $this->action ?>"<?php endif; ?> method="get">
     <input class="search-extended-input" type="hidden" name="extended" id="ctrl_extended_<?= $this->uniqueId ?>"
            value="<?= $this->extended ?>">
@@ -31,10 +35,23 @@
 
         <label for="ctrl_keywords_<?= $this->uniqueId ?>" class="invisible"><?= $this->keywordLabel ?></label>
         <div class="input-button-set">
-            <input class="search-input" type="search" name="keywords" autocomplete="off" id="ctrl_keywords_<?= $this->uniqueId ?>"
+            <input class="search-input" type="search" name="keywords" autocomplete="off"
+                   id="ctrl_keywords_<?= $this->uniqueId ?>"
                    class="text" value="<?= $this->keyword ?>">
             <div class="extend-search <?php if ($this->extensionBoxClass === 'open'): ?>active<?php endif; ?>"></div>
         </div>
+        <?php if ($this->suggestions): ?>
+        <div class="search-word-suggestion">
+            Meinten Sie vielleicht:
+            <?php foreach ($this->suggestions as $suggestion): ?>
+        <div class="search-suggestion" data-word="<?= $suggestion ?>" data-form="form_<?= $this->uniqueId ?>">
+            <?= $suggestion ?>
+        </div>
+        <?php endforeach; ?>
+
+        </div>
+        <?php endif; ?>
+
         <div class="widget">
             <div class="extend-search extend-button">Suche erweitern</div>
         </div>

@@ -117,6 +117,9 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
         $strKeywords = trim(Input::get('keywords'));
 
+        $keywordsArray = explode(' ', $strKeywords);
+
+
         $selectedTopics = Input::get('article_topics');
         $selectedCategories = Input::get('article_categories');
         $extended = Input::get('extended');
@@ -336,6 +339,21 @@ class SearchNewsModule extends \Contao\ModuleSearch
             $this->Template->count = $count;
             $this->Template->keywords = $strKeywords;
 
+            $this->Template->suggestions = array();
+
+            $suggestions = array();
+
+            foreach ($keywordsArray as $keyword) {
+                // print_r($searchIndex);
+                $closestWord = $this->findClosestWord($keyword, $searchIndex);
+                if ($closestWord !== $keyword) {
+                    $suggestions[] = $closestWord;
+                    $this->Template->closest = $closestWord;
+                }
+
+            }
+            $this->Template->suggestions = $suggestions;
+            
             // No results
             if ($count < 1) {
                 $this->Template->header = sprintf($GLOBALS['TL_LANG']['MSC']['sEmpty'], $strKeywords);
@@ -348,10 +366,38 @@ class SearchNewsModule extends \Contao\ModuleSearch
                 $this->Template->categoryResults .= $news;
             }
 
+
             $this->Template->header = $count . " Ergebnisse";
             $this->Template->duration = substr($query_endtime - $query_starttime, 0, 6) . ' ' . $GLOBALS['TL_LANG']['MSC']['seconds'];
         }
         return parent::compile();
+    }
+
+
+    /**
+     * Return similar words
+     *
+     * @param string $word
+     *
+     * @return string
+     */
+    protected function findClosestWord($input, $searchIndex)
+    {
+        $shortest = 100;
+        $closest = '';
+        // loop through words to find the closest
+        foreach ($searchIndex as $index) {
+
+            // calculate the distance between the input word and the current word
+            $lev = levenshtein($input, $index['word']);
+            //if the distance is shorter than the last shortest one, replace it.
+            if ($lev <= $shortest) {
+                // set the closest match, and shortest distance
+                $closest = $index['word'];
+                $shortest = $lev;
+            };
+        };
+        return $closest;
     }
 
     /**

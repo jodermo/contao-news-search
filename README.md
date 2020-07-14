@@ -1,5 +1,5 @@
 # Contao 4 - News Search Bundle
-##### • Search for news by categories
+##### • Search for news by topics and categories
 ###### extension for contao/core-bundle (version ^4.9)
 
 
