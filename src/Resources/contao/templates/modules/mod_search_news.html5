@@ -3,11 +3,7 @@
 
 <?php if ($this->autocomplete): ?>
 <script>
-    var autocompleteData =
-    <
-        ? = $this->autocomplete ?
-    >
-    ;
+    var autocompleteData =<?= $this->autocomplete ?>;
 
     window.addEventListener('load', function () {
         if (window.autocomplete) {
