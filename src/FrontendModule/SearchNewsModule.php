@@ -352,10 +352,11 @@ class SearchNewsModule extends \Contao\ModuleSearch
                 }
 
             }
-            $this->Template->suggestions = $suggestions;
-            
+
+
             // No results
             if ($count < 1) {
+                $this->Template->suggestions = $suggestions;
                 $this->Template->header = sprintf($GLOBALS['TL_LANG']['MSC']['sEmpty'], $strKeywords);
                 $this->Template->duration = substr($query_endtime - $query_starttime, 0, 6) . ' ' . $GLOBALS['TL_LANG']['MSC']['seconds'];
                 return;
@@ -385,14 +386,9 @@ class SearchNewsModule extends \Contao\ModuleSearch
     {
         $shortest = 100;
         $closest = '';
-        // loop through words to find the closest
         foreach ($searchIndex as $index) {
-
-            // calculate the distance between the input word and the current word
             $lev = levenshtein($input, $index['word']);
-            //if the distance is shorter than the last shortest one, replace it.
-            if ($lev <= $shortest) {
-                // set the closest match, and shortest distance
+            if ($lev <= $shortest && $index['word'] !== $input) {
                 $closest = $index['word'];
                 $shortest = $lev;
             };
