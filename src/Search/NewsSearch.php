@@ -63,7 +63,7 @@ class NewsSearch
 
         if ($categoryNews !== null && count($categoryNews)) {
             foreach ($categoryNews as $news) {
-                $hasKeywords = $searchResult->contentKeywordFields($news, $arrChunks);
+                $hasKeywords = $searchResult->newsKeywordFields($news, $arrChunks);
                 if ($hasKeywords && count($hasKeywords)) {
                     if ($timespan === 'week' && $news->date >= $WeekAgo
                         || $timespan === 'month' && $news->date >= $MonthAgo
@@ -73,6 +73,26 @@ class NewsSearch
                     }
 
                 }
+
+                $newsContents = ContentModel::findPublishedByPidAndTable($news->id, 'tl_news');
+
+                if ($newsContents !== null && count($newsContents)) {
+                    foreach ($newsContents as $content) {
+                        $contentHasKeywords = $searchResult->contentKeywordFields($content, $arrChunks);
+                        if ($contentHasKeywords && count($contentHasKeywords)) {
+                            if ($timespan === 'week' && $news->date >= $WeekAgo
+                                || $timespan === 'month' && $news->date >= $MonthAgo
+                                || $timespan === 'year' && $news->date >= $YearAgo
+                                || $timespan === 'all') {
+                                $categoryContents[$news->id] = $news;
+                            }
+
+                        }
+                    }
+                }
+
+
+
             }
         }
 

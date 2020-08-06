@@ -13,6 +13,7 @@ namespace Petzka\ContaoNewsSearch\Search;
 use Contao\FrontendTemplate;
 use Contao\ArticleModel;
 use Contao\PageModel;
+use Contao\ContentModel;
 
 class SearchResult
 {
@@ -22,7 +23,7 @@ class SearchResult
      * check content for keywords
      * @return array
      */
-    public function contentKeywordFields($content, array $arrKeywords)
+    public function newsKeywordFields($news, array $arrKeywords)
     {
         $this->keywords = $arrKeywords;
 
@@ -32,7 +33,56 @@ class SearchResult
             'subheadline',
             'description',
             'author',
-            'headline'
+            'headline',
+        ];
+
+
+        $results = array();
+
+
+        if ($arrKeywords && count($arrKeywords)) {
+            foreach ($arrKeywords as $keyword) {
+                if ($keyword[0] && $keyword[0] !== null && $keyword[0] !== '') {
+                    $fieldHasKeyword = array();
+                    foreach ($searchInFields as $field) {
+
+                        $fieldHasKeyword = $this->fieldHasKeyword($news->{$field}, $keyword, $fieldHasKeyword);
+
+                        if ($news->{$field} && $fieldHasKeyword && count($fieldHasKeyword)) {
+
+                            foreach ($fieldHasKeyword as $keyword) {
+                                // highlight words
+                                $news->{$field} = preg_replace('/\p{L}*?' . preg_quote($keyword[0]) . '\p{L}*/ui', '<span class="highlight">$0</span>', $news->{$field});
+                            }
+                            if (!$results[$field]) {
+                                $results[$field] = array();
+                            }
+                            $word = $keyword[0];
+                            $results[$field][$word] = $news->{$field};
+                        }
+                    }
+                }
+            }
+        }
+
+        
+        return $results;
+    }
+
+    /**
+     * check content for keywords
+     * @return array
+     */
+    public function contentKeywordFields($content, array $arrKeywords)
+    {
+        $this->keywords = $arrKeywords;
+
+
+        $searchInFields = [
+            'headline',
+            'text',
+            'html',
+            'caption'
         ];
 
         $results = array();
@@ -41,10 +91,12 @@ class SearchResult
                 if ($keyword[0] && $keyword[0] !== null && $keyword[0] !== '') {
                     $fieldHasKeyword = array();
                     foreach ($searchInFields as $field) {
+
                         $fieldHasKeyword = $this->fieldHasKeyword($content->{$field}, $keyword, $fieldHasKeyword);
 
                         if ($content->{$field} && $fieldHasKeyword && count($fieldHasKeyword)) {
-                            foreach ($fieldHasKeyword as $keyword){
+
+                            foreach ($fieldHasKeyword as $keyword) {
                                 // highlight words
                                 $content->{$field} = preg_replace('/\p{L}*?' . preg_quote($keyword[0]) . '\p{L}*/ui', '<span class="highlight">$0</span>', $content->{$field});
                             }
@@ -60,7 +112,6 @@ class SearchResult
         }
         return $results;
     }
-
 
     /**
      * check content field for keyword
