@@ -129,6 +129,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
         $timeSpan = Input::get('time_span');
 
+
         $this->Template->uniqueId = $this->id;
         $this->Template->queryType = $strQueryType;
         $this->Template->timeSpan = $timeSpan;
@@ -147,6 +148,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
         $searchIndexDb = $this->Database->prepare("SELECT * FROM tl_search_index ORDER BY word")->execute();
         $searchIndex = $searchIndexDb->fetchAllAssoc();
+
         $autocompleteArray = '[';
         $autocompleteCount = 0;
         $keywords = array();
@@ -206,16 +208,17 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $this->Template->topics = $allTopics;
 
         $this->Template->extensionBoxClass = 'closed';
+
         if ($extended === '1') {
             $this->Template->extensionBoxClass = 'open';
         }
 
-
         $this->Template->allTopicsSelected = true;
+
         $this->Template->allCategoriesSelected = true;
 
-
         $this->Template->allTopicsSelected = false;
+
         $this->Template->allCategoriesSelected = false;
 
         if ($selectedTopics && count($selectedTopics)) {
@@ -234,6 +237,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
         }
 
         $this->Template->topicsAvailable = false;
+
         $activeTopics = array();
         if (count($this->Template->topics)) {
             foreach ($this->Template->topics as $topic) {
@@ -259,6 +263,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
         }
 
         $categories = array();
+
         if ($this->search_categories) {
             $ids = StringUtil::deserialize($this->search_categories);
             if (!$this->search_category_subcategory) {
@@ -286,8 +291,11 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
 
         $this->Template->categories = $categories;
+
         $this->Template->categoriesVisible = false;
+
         $activeCategories = array();
+
         if (count($this->Template->categories)) {
             foreach ($this->Template->categories as $category) {
                 $category->{'checked'} = false;
@@ -324,35 +332,38 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
 
         // Execute the search if there are keywords
-        if ($strKeywords != '' && $strKeywords != '*') {
 
-            $arrResult = null;
 
-            $query_starttime = microtime(true);
+        $arrResult = null;
+
+        $query_starttime = microtime(true);
+        $count = 0;
+
+
+        if ($this->search_on_start && (count($activeTopics) || count($activeCategories)) || (($strKeywords != '' && $strKeywords != '*'))) {
 
             $arrResult = NewsSearch::searchFor($strKeywords, $newsCategories, $activeTopics, $activeCategories, $timeSpan);
-
-            $query_endtime = microtime(true);
-
             $count = count($arrResult);
+        }
 
-            $this->Template->count = $count;
-            $this->Template->keywords = $strKeywords;
+        $query_endtime = microtime(true);
 
-            $this->Template->suggestions = array();
 
-            $suggestions = array();
+        $this->Template->count = $count;
+        $this->Template->keywords = $strKeywords;
 
+        $this->Template->suggestions = array();
+
+        $suggestions = array();
+
+        if ($strKeywords != '' && $strKeywords != '*') {
             foreach ($keywordsArray as $keyword) {
-                // print_r($searchIndex);
                 $closestWord = $this->findClosestWord($keyword, $searchIndex);
                 if ($closestWord !== $keyword) {
                     $suggestions[] = $closestWord;
                     $this->Template->closest = $closestWord;
                 }
-
             }
-
 
             // No results
             if ($count < 1) {
@@ -362,6 +373,9 @@ class SearchNewsModule extends \Contao\ModuleSearch
                 return;
             }
 
+        }
+
+        if ($count > 0) {
             $newsArticles = $this->parseArticles($arrResult);
             foreach ($newsArticles as $news) {
                 $this->Template->categoryResults .= $news;
@@ -371,6 +385,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
             $this->Template->header = $count . " Ergebnisse";
             $this->Template->duration = substr($query_endtime - $query_starttime, 0, 6) . ' ' . $GLOBALS['TL_LANG']['MSC']['seconds'];
         }
+
         return parent::compile();
     }
 

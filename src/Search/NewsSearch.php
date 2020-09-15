@@ -35,17 +35,18 @@ class NewsSearch
     {
 
 
+
+
         // Clean the keywords
         $strKeywords = \StringUtil::decodeEntities($strKeywords);
         $strKeywords = Utf8::strtolower($strKeywords);
 
-        // Check keyword string
-        if (!\strlen($strKeywords)) {
-            throw new \Exception('Empty keyword string');
-        }
+
         // Split keywords
         $arrChunks = array();
-        preg_match_all('/"[^"]+"|[+-]?[^ ]+\*?/', $strKeywords, $arrChunks);
+        if ($strKeywords != '' && $strKeywords != '*') {
+            preg_match_all('/"[^"]+"|[+-]?[^ ]+\*?/', $strKeywords, $arrChunks);
+        }
 
 
         $categoryContents = array();
@@ -63,8 +64,13 @@ class NewsSearch
 
         if ($categoryNews !== null && count($categoryNews)) {
             foreach ($categoryNews as $news) {
-                $hasKeywords = $searchResult->newsKeywordFields($news, $arrChunks);
-                if ($hasKeywords && count($hasKeywords)) {
+                if($news->published){
+                    $keywords = false;
+                    if ($arrChunks && count($arrChunks)) {
+                        $keywords = true;
+                        $hasKeywords = $searchResult->newsKeywordFields($news, $arrChunks);
+                    }
+                if (($hasKeywords && count($hasKeywords)) || $keywords === false) {
                     if ($timespan === 'week' && $news->date >= $WeekAgo
                         || $timespan === 'month' && $news->date >= $MonthAgo
                         || $timespan === 'year' && $news->date >= $YearAgo
@@ -90,11 +96,13 @@ class NewsSearch
                         }
                     }
                 }
-
+                }
 
 
             }
         }
+
+
 
         return $categoryContents;
 

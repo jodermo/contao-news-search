@@ -17,9 +17,18 @@
 
 $GLOBALS['TL_DCA']['tl_module']['palettes']['search_news_categories'] = $GLOBALS['TL_DCA']['tl_module']['palettes']['default'];
 
-$GLOBALS['TL_DCA']['tl_module']['palettes']['search_news_categories'] .= ";{headline_legend},headline;{template_legend},news_template,customTpl;{search_topic_legend},search_topics,search_topic_subcategory;{search_category_legend},search_categories,search_category_subcategory";
+$GLOBALS['TL_DCA']['tl_module']['palettes']['search_news_categories'] .= ";{headline_legend},headline;{search_config_legend},search_on_start;{template_legend},news_template,customTpl;{search_topic_legend},search_topics,search_topic_subcategory;{search_category_legend},search_categories,search_category_subcategory";
 // print_r($GLOBALS['TL_DCA']['tl_module']['palettes']['search_news_categories']);
 
+
+$GLOBALS['TL_DCA']['tl_module']['fields']['search_on_start'] = array
+(
+    'label' => &$GLOBALS['TL_LANG']['tl_module']['search_on_start'],
+    'exclude'                 => true,
+    'filter'                  => true,
+    'inputType'               => 'checkbox',
+    'sql'                     => "char(1) NOT NULL default '1'"
+);
 
 $GLOBALS['TL_DCA']['tl_module']['fields']['search_topics'] = array
 (
