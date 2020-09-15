@@ -49,10 +49,6 @@ class SearchNewsModule extends \Contao\ModuleSearch
      */
     public function generate()
     {
-
-
-        //	 throw new \Exception(print_r($this->categories));
-
         return parent::generate();
     }
 
@@ -65,6 +61,8 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
         /** @var \PageModel $objPage */
         global $objPage;
+
+        $start_time = microtime(true);
 
         // Mark the x and y parameter as used (see #4277)
         if (isset($_GET['x'])) {
@@ -154,6 +152,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $keywords = array();
 
 
+
         foreach ($searchIndex as $index) {
             if ($index['word'] && is_string($index['word']) && !is_numeric($index['word'])) {
                 $wordExist = false;
@@ -175,11 +174,16 @@ class SearchNewsModule extends \Contao\ModuleSearch
         }
         $autocompleteArray .= ']';
 
+
+        $end_time = microtime(true);
+        throw new \Exception(($end_time - $start_time));
+
         // print_r($autocompleteArray);
 
         $this->Template->autocomplete = $autocompleteArray;
         $allTopics = array();
         if ($this->search_topics) {
+
             $ids = StringUtil::deserialize($this->search_topics);
             if (!$this->search_topic_subcategory) {
                 if ($ids && count($ids)) {
@@ -264,6 +268,8 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
         $categories = array();
 
+
+
         if ($this->search_categories) {
             $ids = StringUtil::deserialize($this->search_categories);
             if (!$this->search_category_subcategory) {
@@ -288,6 +294,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
                 }
             }
         }
+
 
 
         $this->Template->categories = $categories;
@@ -339,9 +346,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $query_starttime = microtime(true);
         $count = 0;
 
-
-        if ($this->search_on_start && (count($activeTopics) || count($activeCategories)) || (($strKeywords != '' && $strKeywords != '*'))) {
-
+        if (count($activeTopics) || count($activeCategories) || (($strKeywords != '' && $strKeywords != '*'))) {
             $arrResult = NewsSearch::searchFor($strKeywords, $newsCategories, $activeTopics, $activeCategories, $timeSpan);
             $count = count($arrResult);
         }
