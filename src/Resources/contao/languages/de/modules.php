@@ -9,3 +9,6 @@
  */
 
 $GLOBALS['TL_LANG']['FMD']['search_news_categories'] = array('News Suche', 'Sucht nach Nachrichten anhand von Kategorien');
+
+
+$GLOBALS['TL_LANG']['MOD']['search_suggestions'] = array('Suchvorschläge', '');

@@ -12,7 +12,7 @@ namespace Petzka\ContaoNewsSearch\FrontendModule;
 
 use Input;
 
-use Petzka\ContaoNewsSearch\Model\ArticleModel;
+use Petzka\ContaoNewsSearch\Model\SearchSuggestionModel;
 use Petzka\ContaoNewsSearch\Model\NewsModel;
 use Petzka\ContaoNewsSearch\Search\NewsSearch;
 use Petzka\ContaoNewsSearch\Search\SearchResult;
@@ -144,8 +144,11 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $newsCategories = $newsCategoriesDb->fetchAllAssoc();
 
 
-        $searchIndexDb = $this->Database->prepare("SELECT * FROM tl_search_index ORDER BY word")->execute();
-        $searchIndex = $searchIndexDb->fetchAllAssoc();
+        // $searchIndexDb = $this->Database->prepare("SELECT * FROM tl_search_index ORDER BY word")->execute();
+
+
+        $searchIndex = SearchSuggestionModel::findAll();
+
 
         $autocompleteArray = '[';
         $autocompleteCount = 0;
@@ -154,21 +157,24 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
 
         foreach ($searchIndex as $index) {
-            if ($index['word'] && is_string($index['word']) && !is_numeric($index['word'])) {
+            if ($index->word) {
                 $wordExist = false;
                 foreach ($keywords as $word) {
-                    if ($word === $index['word']) {
+                    if ($word === $index->word) {
                         $wordExist = true;
                     }
                 }
                 if (!$wordExist) {
-                    $keywords[] = $index['word'];
-                    $word = str_replace("'", " ", $index['word']);
+                    $keywords[] = $index->word;
+                    $word = str_replace("'", " ", $index->word);
                     $autocompleteArray .= "'" . $word . "',";
                     $autocompleteCount++;
                 }
             }
         }
+       
+
+
         if ($autocompleteCount) {
             $autocompleteArray = substr($autocompleteArray, 0, -1);
         }
@@ -176,7 +182,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
 
         $end_time = microtime(true);
-      //  throw new \Exception(($end_time - $start_time));
+        //  throw new \Exception(($end_time - $start_time));
 
         // print_r($autocompleteArray);
 
@@ -269,7 +275,6 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $categories = array();
 
 
-
         if ($this->search_categories) {
             $ids = StringUtil::deserialize($this->search_categories);
             if (!$this->search_category_subcategory) {
@@ -294,7 +299,6 @@ class SearchNewsModule extends \Contao\ModuleSearch
                 }
             }
         }
-
 
 
         $this->Template->categories = $categories;
@@ -407,9 +411,9 @@ class SearchNewsModule extends \Contao\ModuleSearch
         $shortest = 100;
         $closest = '';
         foreach ($searchIndex as $index) {
-            $lev = levenshtein($input, $index['word']);
-            if ($lev <= $shortest && $index['word'] !== $input) {
-                $closest = $index['word'];
+            $lev = levenshtein($input, $index->word);
+            if ($lev <= $shortest && $index->word !== $input) {
+                $closest = $index->word;
                 $shortest = $lev;
             };
         };
