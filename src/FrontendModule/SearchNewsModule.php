@@ -176,7 +176,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
 
 
         $end_time = microtime(true);
-        throw new \Exception(($end_time - $start_time));
+      //  throw new \Exception(($end_time - $start_time));
 
         // print_r($autocompleteArray);
 
