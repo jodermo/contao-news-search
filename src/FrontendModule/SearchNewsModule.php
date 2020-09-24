@@ -147,8 +147,14 @@ class SearchNewsModule extends \Contao\ModuleSearch
         // $searchIndexDb = $this->Database->prepare("SELECT * FROM tl_search_index ORDER BY word")->execute();
 
 
-        $searchIndex = SearchSuggestionModel::findAll();
+       // $searchIndex = SearchSuggestionModel::findAll();
+        $searchIndex = array();
+        $strCachePath = 'files/search/';
+        $strCacheFile = $strCachePath . 'search-suggestions.json';
 
+        $autocompleteScript = '<script>';
+
+        $autocompleteScript .= '</script>';
 
         $autocompleteArray = '[';
         $autocompleteCount = 0;
@@ -187,6 +193,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
         // print_r($autocompleteArray);
 
         $this->Template->autocomplete = $autocompleteArray;
+        $this->Template->autocompleteJsonPath = $strCacheFile;
         $allTopics = array();
         if ($this->search_topics) {
 
@@ -520,7 +527,7 @@ class SearchNewsModule extends \Contao\ModuleSearch
                 }
 
                 $arrArticle['singleSRC'] = $objModel->path;
-                $this->addImageToTemplate($objTemplate, $arrArticle, null, null, $objModel);
+                $this->addImageToTemplate($objTemplate, $arrArticle, 1024, null, $objModel);
 
                 // Link to the news article if no image link has been defined (see #30)
                 if (!$objTemplate->fullsize && !$objTemplate->imageUrl) {

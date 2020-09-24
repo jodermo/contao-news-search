@@ -12,6 +12,9 @@ namespace Petzka\ContaoNewsSearch\Widget;
 
 
 use Contao\ContentModel;
+use Contao\File;
+use Contao\Search;
+use Contao\System;
 use Contao\Widget;
 use Contao\Database;
 use Contao\NewsModel;
@@ -48,18 +51,29 @@ class SearchSuggestionsWidget extends Widget
 
         $removeId = null;
 
+        $start = 1;
+        $length = 100;
+        $writeJson = false;
+
         if (isset($_GET['search'])) {
             $search = true;
         }
         if (isset($_GET['remove'])) {
             $result .= $this->removeSuggestion($_GET['remove']);
+            $writeJson = true;
+        }
+        if (isset($_GET['start'])) {
+            $start = intval($_GET['start']);
+        }
+        if (!$start) {
+            $start = 1;
         }
 
-        $result .= $this->searchOptions();
 
         if (isset($_GET['clear'])) {
             $this->removeAll();
             $result .= '<h2>Alle Einträge wurden erfolgreich gelöscht</h2>';
+            $writeJson = true;
         } else {
             $words = array();
             $suggestions = SearchSuggestionModel::findAll(array('order' => 'word'));
@@ -72,14 +86,26 @@ class SearchSuggestionsWidget extends Widget
             if ($search) {
                 $words = $this->findNewWords($words, 8, 16);
                 $suggestions = SearchSuggestionModel::findAll(array('order' => 'word'));
+                $writeJson = true;
             }
 
-
-            $result .= '<h2>' . count($words) . ' Einträge:</h2>';
-            $result .= $this->existingSuggestions($suggestions);
+            $total = count($suggestions);
+            $endValue = ($start + $length);
+            if ($endValue > $total) {
+                $endValue = $total;
+            }
+            $result .= '<h2 style="margin-bottom: 6px;">' . ($start) . ' - ' . ($endValue) . ' von ' . $total . ' Einträgen:</h2>';
+            $result .= $this->paging(1, $start, $length, $total);
+            $result .= $this->existingSuggestions($suggestions, $start, $length);
+            $result .= $this->paging(2, $start, $length, $total);
+            $result .= '<p>' . ($start) . ' - ' . ($endValue) . ' / ' . $total . '</p>';
 
         }
+        if ($writeJson) {
+            $this->writeJsonFile($words);
+        }
 
+        $result .= $this->searchOptions();
 
         return $result;
     }
@@ -89,7 +115,7 @@ class SearchSuggestionsWidget extends Widget
      *
      * @return string
      */
-    public function existingSuggestions($suggestions)
+    public function existingSuggestions($suggestions, $start, $length)
     {
 
         $protocol = isset($_SERVER["HTTPS"]) ? 'https' : 'http';
@@ -100,15 +126,16 @@ class SearchSuggestionsWidget extends Widget
 
         $removeUrl = $pageUrl . '&remove=';
 
-
         $result = '<div class="tl_listing"><table class="tl_listing"><tbody>';
         if ($suggestions && count($suggestions)) {
             $i = 0;
-            foreach ($suggestions as $suggestion) {
+            foreach ($suggestions as $key => $suggestion) {
                 $i++;
-                $result .= '<tr class="' . ($i % 2 ? 'odd' : 'even') . '"><td>' . $suggestion->word . '</td>';
-                $result .= '<td><a href="' . $removeUrl . $suggestion->id . '" title="" class="delete"><img src="system/themes/flexible/icons/delete.svg" alt="Artikel ID ' . $suggestion->id . ' löschen" width="16" height="16"></a></td>';
-                $result .= '</tr>';
+                if ($i >= $start && $i <= $start + $length) {
+                    $result .= '<tr class="' . ($i % 2 ? 'odd' : 'even') . '"><td>' . $i . '</td><td>' . $suggestion->word . '</td>';
+                    $result .= '<td><a href="' . $removeUrl . $suggestion->id . '" title="" class="delete"><img src="system/themes/flexible/icons/delete.svg" alt="Artikel ID ' . $suggestion->id . ' löschen" width="16" height="16"></a></td>';
+                    $result .= '</tr>';
+                }
             }
         } else {
             $result .= '<li>Keine Wörter vorhanden</li>';
@@ -118,6 +145,101 @@ class SearchSuggestionsWidget extends Widget
         return $result;
 
     }
+
+    /**
+     * searchOptions
+     *
+     * @return string
+     */
+    public function paging($id, $start, $length, $total)
+    {
+        $result = '<div style="display: flex; justify-content: center; margin: 6px 0;">';
+
+        $protocol = isset($_SERVER["HTTPS"]) ? 'https' : 'http';
+        $pageUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+        $pageUrl = $this->removeQueryStringParameter($pageUrl, 'search');
+        $pageUrl = $this->removeQueryStringParameter($pageUrl, 'clear');
+        $pageUrl = $this->removeQueryStringParameter($pageUrl, 'remove');
+        $pageUrl = $this->removeQueryStringParameter($pageUrl, 'start');
+        $prevStart = ($start - $length);
+        if ($prevStart < 1) {
+            $prevStart = 1;
+        }
+        $nextStart = ($start + $length);
+
+        $startPageUrl = $pageUrl . '&start=1';
+        $prevPageUrl = $pageUrl . '&start=' . $prevStart;
+        $nextPageUrl = $pageUrl . '&start=' . $nextStart;
+        $endStart = intVal($total / $length) * $length;
+        $endPageUrl = $pageUrl . '&start=' . $endStart;
+
+        $startButton = ($start > 1);
+        $prevButton = ($start > 1);
+        $nextButton = ($start + $length < $total);
+        $endButton = ($start + $length < $total);
+
+        $startButtonText = 'Erste Seite';
+        $prevButtonText = 'Zurück (' . ($prevStart) . ' - ' . ($prevStart + $length) . ')';
+        $endValue = ($start + $length);
+        if ($endValue > $total) {
+            $endValue = $total;
+        }
+        $nextEndValue = ($nextStart + $length);
+        if ($nextEndValue > $total) {
+            $nextEndValue = $total;
+        }
+        $nextButtonText = 'Vor (' . ($nextStart) . ' - ' . ($nextEndValue) . ')';
+        $endButtonText = 'Letzte Seite';
+
+        $jsResult = '<script>';
+        $jsResult .= 'window.addEventListener("load", function() {';
+        if ($startButton) {
+            $jsResult .= '  document.getElementById("startPageButton' . $id . '").onclick  = function(e){';
+            $jsResult .= '      e.preventDefault();';
+            $jsResult .= '      window.open("' . $startPageUrl . '", "_top");';
+            $jsResult .= '  };';
+        }
+        if ($prevButton) {
+            $jsResult .= '  document.getElementById("prevPageButton' . $id . '").onclick  = function(e){';
+            $jsResult .= '      e.preventDefault();';
+            $jsResult .= '      window.open("' . $prevPageUrl . '", "_top");';
+            $jsResult .= '  };';
+        }
+        if ($nextButton) {
+            $jsResult .= '  document.getElementById("nextPageButton' . $id . '").onclick  = function(e){';
+            $jsResult .= '      e.preventDefault();';
+            $jsResult .= '      window.open("' . $nextPageUrl . '", "_top");';
+            $jsResult .= '  };';
+        }
+        if ($endButton) {
+            $jsResult .= '  document.getElementById("endPageButton' . $id . '").onclick  = function(e){';
+            $jsResult .= '      e.preventDefault();';
+            $jsResult .= '      window.open("' . $endPageUrl . '", "_top");';
+            $jsResult .= '  };';
+        }
+        $jsResult .= '});';
+        $jsResult .= '</script>';
+        if ($prevButton) {
+            $result .= '<button id="startPageButton' . $id . '" class="tl_submit" >' . $startButtonText . '</button>';
+
+
+            $result .= '<button id="prevPageButton' . $id . '" class="tl_submit" >' . $prevButtonText . '</button>';
+        }
+        $result .= '<div style="padding: 6px 20px; flex:1; text-align: center"></div>';
+        if ($nextButton) {
+            $result .= '<button id="nextPageButton' . $id . '" class="tl_submit" >' . $nextButtonText . '</button>';
+
+
+            $result .= '<button id="endPageButton' . $id . '" class="tl_submit" >' . $endButtonText . '</button>';
+        }
+
+        $result = $jsResult . $result;
+        $result .= '<style>.tl_submit_container{ display: none; }</style><br><br>';
+        $result .= '</div>';
+        return $result;
+
+    }
+
 
     /**
      * searchOptions
@@ -135,7 +257,6 @@ class SearchSuggestionsWidget extends Widget
         $pageUrl = $this->removeQueryStringParameter($pageUrl, 'remove');
         $searchUrl = $pageUrl . '&search=1';
         $clearUrl = $pageUrl . '&clear=1';
-
 
         $jsResult = '<script>';
         $jsResult .= 'window.addEventListener("load", function() {';
@@ -158,7 +279,7 @@ class SearchSuggestionsWidget extends Widget
         $jsResult .= '});';
         $jsResult .= '</script>';
 
-        $result .= '<button id="searchButton" class="tl_submit" >Inhalte nach Wörtern durchsuchen</button>';
+        $result .= '<button id="searchButton" class="tl_submit" >Suchindex neu aufbauen</button>';
         if (!isset($_GET['clear'])) {
             $result .= '<button id="clearButton" class="tl_submit" >Alle Einträge löschen</button>';
             $result .= '<div id="clearLoader" style="display: none; padding: 10px;" ><p><i>Alle Einträge werden gelöscht</i></p></div>';
@@ -304,9 +425,9 @@ class SearchSuggestionsWidget extends Widget
         if ($suggestion && $suggestion->id) {
             $objDatabase = Database::getInstance();
             $objDatabase->prepare("DELETE FROM tl_search_suggestion WHERE id=?")->execute($suggestion->id);
-            $result .= $suggestion->word . ' wurde erfolgreich gelöscht';
+            $result .= 'Der Eintrag "' . $suggestion->word . '" wurde erfolgreich gelöscht';
         } else {
-            $result .= 'Eintrag mit id: ' . $id . ' konnte nicht gefunden werden';
+            $result .= 'Eintrag mit ID: "' . $id . '" konnte nicht gefunden werden';
         }
         $result .= '</p>';
         return $result;
@@ -335,6 +456,34 @@ class SearchSuggestionsWidget extends Widget
         $query = !empty($query) ? '?' . http_build_query($query) : '';
 
         return $parsedUrl['scheme'] . '://' . $parsedUrl['host'] . $path . $query;
+    }
+
+
+    /**
+     * Remove a query string parameter from an URL.
+     *
+     * @param string $url
+     * @param string $varname
+     *
+     * @return string
+     */
+    function writeJsonFile($arrResult)
+    {
+        // $strCachePath = StringUtil::stripRootDir(System::getContainer()->getParameter('kernel.project_dir'));
+        $strCachePath = 'files/search/';
+        $strWebPath = 'web/' . $strCachePath;
+        $strCacheFile = $strCachePath . 'search-suggestions.json';
+        $strWebFile = $strWebPath . 'search-suggestions.json';
+        if (file_exists($strCachePath)) {
+            $objFile = new File($strCacheFile);
+            $objFile->delete();
+        }
+        if (file_exists($strWebPath)) {
+            $objFile = new File($strWebFile);
+            $objFile->delete();
+        }
+        File::putContent($strCacheFile, json_encode($arrResult));
+        File::putContent($strWebFile, json_encode($arrResult));
     }
 
 

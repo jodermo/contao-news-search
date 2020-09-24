@@ -3,13 +3,13 @@
 
 <?php if ($this->autocomplete): ?>
 <script>
-    var autocompleteData =<?= $this->autocomplete ?>;
+    var autocompleteJsonPath ='<?= $this->autocompleteJsonPath ?>';
 
     window.addEventListener('load', function () {
         if (window.autocomplete) {
-            window.autocomplete(document.getElementById("ctrl_keywords_<?= $this->uniqueId ?>"), autocompleteData);
+            window.autocomplete(document.getElementById("ctrl_keywords_<?= $this->uniqueId ?>"), autocompleteJsonPath);
         } else if (autocomplete) {
-            autocomplete(document.getElementById("ctrl_keywords_<?= $this->uniqueId ?>"), autocompleteData);
+            autocomplete(document.getElementById("ctrl_keywords_<?= $this->uniqueId ?>"), autocompleteJsonPath);
         }
     });
 

@@ -1,24 +1,29 @@
 (function contaoNewsSearch() {
 
+
+
     this.searchButtons = [];
     this.searchInputs = [];
     this.searchViews = [];
     this.suggestionButtons = [];
     this.searchExtendedInputs = [];
+    this.suggestionsPathElement;
+
     this.searchButtonClass = 'extend-search';
     this.searchViewsClass = 'search-extension';
     this.searchInputClass = 'search-input';
     this.searchExtendedInputClass = 'search-extended-input';
     this.suggestionsClass = 'search-suggestion';
 
-
     this.isExtended = false;
+
+    this.suggestionsPath;
 
 
     this.init = init;
     this.showSearchViews = showSearchViews;
     this.hideSearchViews = hideSearchViews;
-
+    var newsSearch = this;
     init();
     return this;
 
